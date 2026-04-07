@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kegel Vital Pro - Respaldo Externo</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        @keyframes pulse-contract { 0% { transform: scale(1); background-color: #e0e7ff; } 100% { transform: scale(0.6); background-color: #6366f1; } }
+        @keyframes pulse-relax { 0% { transform: scale(0.6); background-color: #6366f1; } 100% { transform: scale(1); background-color: #e0e7ff; } }
+        .circle-contract { animation: pulse-contract forwards linear; }
+        .circle-relax { animation: pulse-relax forwards linear; }
+
+        /* Estilo para los botones de respaldo */
+        .btn-backup {
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased">
+
+    <div class="max-w-md mx-auto min-h-screen bg-white relative shadow-2xl overflow-hidden flex flex-col">
+
+        <!-- PANTALLA DE ACCESO -->
+        <div id="view-login" class="absolute inset-0 bg-white z-50 flex flex-col justify-center p-8 fade-in">
+            <div class="text-center mb-10">
+                <div class="inline-flex items-center justify-center w-20 h-20 bg-indigo-100 text-indigo-600 rounded-full mb-6 shadow-sm">
+                    <i data-lucide="shield-check" class="w-10 h-10"></i>
+                </div>
+                <h1 class="text-3xl font-bold text-slate-900 mb-2">Kegel Vital</h1>
+                <p class="text-slate-500" id="login-subtitle">Entra a tu perfil para sincronizar tus metas.</p>
+            </div>
+
+            <div class="bg-slate-50 p-6 rounded-3xl border border-slate-100 shadow-sm">
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Nombre de Usuario:</label>
+                <input type="text" id="input-username" 
+                    class="w-full px-4 py-3 rounded-xl border border-slate-200 mb-4 focus:ring-2 focus:ring-indigo-500 outline-none transition" 
+                    placeholder="Ej. Mama, Juan, etc..."
+                    onkeypress="if(event.key === 'Enter') handleLogin()">
+                <button id="btn-login" onclick="handleLogin()" class="w-full bg-indigo-600 text-white font-semibold py-4 rounded-xl shadow-lg hover:bg-indigo-700 transition active:scale-[0.98]">
+                    Entrar a mi perfil
+                </button>
+            </div>
+
+            <div id="profiles-container" class="mt-8 hidden">
+                <p class="text-[10px] text-center font-bold text-slate-400 uppercase tracking-widest mb-4">Perfiles en este equipo</p>
+                <div id="profiles-list" class="flex flex-wrap justify-center gap-2"></div>
+            </div>
+        </div>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <div id="app-content" class="hidden flex-col h-full min-h-screen pb-20">
+            <header class="pt-12 pb-4 px-6 flex justify-between items-center bg-white sticky top-0 z-10 border-b border-slate-50">
+                <div>
+                    <div id="connection-status" class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider mb-0.5">
+                        <!-- Se llena dinámicamente -->
+                    </div>
+                    <h2 id="header-title" class="text-2xl font-bold text-slate-900">Inicio</h2>
+                </div>
+                <div class="bg-indigo-50 px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-indigo-100">
+                    <i data-lucide="award" class="w-4 h-4 text-indigo-600"></i>
+                    <span id="display-level" class="font-bold text-indigo-700 text-sm">Lvl 1</span>
+                </div>
+            </header>
+
+            <main class="flex-1 overflow-y-auto no-scrollbar px-6 pb-6 pt-4">
+                <!-- PESTAÑA: INICIO -->
+                <div id="tab-home" class="fade-in">
+                    
+                    <!-- RECORDATORIO DE RESPALDO (NUEVO) -->
+                    <div id="backup-reminder" class="hidden mb-6 bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
+                        <div class="bg-orange-100 p-2 rounded-full text-orange-600 shrink-0">
+                            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-orange-800">Respaldo Recomendado</h4>
+                            <p class="text-xs text-orange-600 mt-1 leading-relaxed">Hace más de 7 días que no guardas tus avances. Protege tu progreso creando una copia.</p>
+                            <button onclick="switchTab('settings')" class="mt-3 text-[10px] font-bold uppercase tracking-widest text-orange-700 bg-orange-100/80 border border-orange-200 px-4 py-2 rounded-xl hover:bg-orange-200 transition active:scale-95">
+                                Ir a respaldar ahora
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-3xl p-6 text-white shadow-xl mb-8 relative overflow-hidden">
+                        <h3 class="text-indigo-100 font-medium mb-1">Tu Progreso</h3>
+                        <p class="text-3xl font-bold mb-4" id="home-xp-text">0 XP</p>
+                        <div class="w-full bg-indigo-900/30 rounded-full h-2 mb-2">
+                            <div id="home-xp-bar" class="bg-white h-2 rounded-full transition-all duration-1000" style="width: 0%"></div>
+                        </div>
+                        <p class="text-xs text-indigo-200 text-right" id="home-xp-next">Cargando...</p>
+                    </div>
+
+                    <div class="flex justify-center my-12">
+                        <button onclick="startWorkout()" class="relative group">
+                            <div class="absolute inset-0 bg-indigo-200 rounded-full blur-2xl opacity-40 group-hover:opacity-60 transition duration-500"></div>
+                            <div class="relative w-48 h-48 bg-white border-[8px] border-indigo-50 rounded-full flex flex-col items-center justify-center shadow-2xl group-active:scale-95 transition duration-300">
+                                <i data-lucide="play" class="w-12 h-12 text-indigo-600 mb-2 ml-1"></i>
+                                <span class="font-bold text-slate-800 text-lg">Entrenar</span>
+                                <span id="home-time-estimate" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">~3 MIN</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 flex items-center justify-between shadow-sm">
+                        <div>
+                            <p class="font-bold text-slate-800">Objetivo Diario</p>
+                            <p id="home-status" class="text-sm text-slate-500">Pendiente hoy</p>
+                        </div>
+                        <div id="home-status-icon" class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
+                            <i data-lucide="clock" class="w-5 h-5 text-slate-400"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PESTAÑA: CALENDARIO -->
+                <div id="tab-calendar" class="hidden fade-in">
+                    <div class="flex items-center justify-between mb-6">
+                        <button onclick="changeMonth(-1)" class="p-2 bg-slate-50 rounded-full text-slate-600 hover:bg-indigo-50 transition"><i data-lucide="chevron-left"></i></button>
+                        <h3 id="calendar-month-year" class="font-bold text-lg text-slate-800 capitalize"></h3>
+                        <button onclick="changeMonth(1)" class="p-2 bg-slate-50 rounded-full text-slate-600 hover:bg-indigo-50 transition"><i data-lucide="chevron-right"></i></button>
+                    </div>
+                    <div class="grid grid-cols-7 gap-1 mb-4 text-center">
+                        <div class="text-[10px] font-black text-slate-300 uppercase">DO</div>
+                        <div class="text-[10px] font-black text-slate-300 uppercase">LU</div>
+                        <div class="text-[10px] font-black text-slate-300 uppercase">MA</div>
+                        <div class="text-[10px] font-black text-slate-300 uppercase">MI</div>
+                        <div class="text-[10px] font-black text-slate-300 uppercase">JU</div>
+                        <div class="text-[10px] font-black text-slate-300 uppercase">VI</div>
+                        <div class="text-[10px] font-black text-slate-300 uppercase">SA</div>
+                    </div>
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-y-3"></div>
+                </div>
+
+                <!-- PESTAÑA: AJUSTES (Aquí incluimos la Opción 3) -->
+                <div id="tab-settings" class="hidden fade-in">
+                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Configuración de Rutina</h3>
+                    <div id="settings-list" class="space-y-6 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm mb-8">
+                        <!-- Sliders dinámicos -->
+                    </div>
+                    
+                    <!-- SECCIÓN DE RESPALDO (OPCIÓN 3) -->
+                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Copia de Seguridad (Google Drive)</h3>
+                    <div class="bg-indigo-50 p-6 rounded-3xl border border-indigo-100 mb-8">
+                        <p class="text-xs text-indigo-700 mb-4 leading-relaxed">
+                            Crea un archivo de respaldo para guardar en tu <b>Google Drive</b>. Si cambias de celular, usa este archivo para recuperar tus datos.
+                        </p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="exportBackup()" class="btn-backup bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-100 shadow-sm">
+                                <i data-lucide="download-cloud" class="w-4 h-4"></i>
+                                Respaldar
+                            </button>
+                            <button onclick="triggerImport()" class="btn-backup bg-indigo-600 text-white shadow-md hover:bg-indigo-700">
+                                <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                                Restaurar
+                            </button>
+                        </div>
+                        <input type="file" id="import-file" class="hidden" accept=".json" onchange="handleImport(event)">
+                    </div>
+
+                    <button onclick="handleLogout()" class="w-full bg-red-50 text-red-600 font-bold py-4 rounded-2xl border border-red-100 flex items-center justify-center gap-2 hover:bg-red-100 transition">
+                        <i data-lucide="log-out" class="w-5 h-5"></i>
+                        Cerrar Sesión / Cambiar Perfil
+                    </button>
+                </div>
+            </main>
+
+            <!-- NAVEGACIÓN -->
+            <nav class="absolute bottom-0 w-full bg-white/80 backdrop-blur-md border-t border-slate-100 flex justify-around pb-8 pt-3 px-2 z-20">
+                <button onclick="switchTab('home')" id="nav-home" class="flex-1 flex flex-col items-center text-indigo-600 transition-colors">
+                    <i data-lucide="home" class="w-6 h-6 mb-1"></i>
+                    <span class="text-[10px] font-bold">INICIO</span>
+                </button>
+                <button onclick="switchTab('calendar')" id="nav-calendar" class="flex-1 flex flex-col items-center text-slate-400 transition-colors">
+                    <i data-lucide="calendar" class="w-6 h-6 mb-1"></i>
+                    <span class="text-[10px] font-bold">HISTORIAL</span>
+                </button>
+                <button onclick="switchTab('settings')" id="nav-settings" class="flex-1 flex flex-col items-center text-slate-400 transition-colors">
+                    <i data-lucide="settings" class="w-6 h-6 mb-1"></i>
+                    <span class="text-[10px] font-bold">AJUSTES</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- MODALES (WORKOUT / SUCCESS) -->
+        <div id="workout-modal" class="fixed inset-0 bg-slate-900 z-[60] hidden flex-col items-center justify-between py-16 px-8 fade-in">
+            <div class="w-full flex justify-between items-center">
+                <span id="workout-progress" class="bg-slate-800 text-slate-400 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest">Serie 1/3</span>
+                <button onclick="abortWorkout()" class="p-2 text-white/50 hover:text-white"><i data-lucide="x"></i></button>
+            </div>
+            <div class="flex-1 flex flex-col items-center justify-center w-full">
+                <div class="relative w-72 h-72 flex items-center justify-center">
+                    <div id="breathing-circle" class="absolute w-full h-full rounded-full bg-indigo-500/20"></div>
+                    <div class="relative z-10 text-center">
+                        <p id="workout-instruction" class="text-3xl font-black text-white mb-2 uppercase tracking-tighter">PREPÁRATE</p>
+                        <p id="workout-timer" class="text-7xl font-black text-indigo-400 tabular-nums">3</p>
+                    </div>
+                </div>
+                <p id="workout-rep-count" class="text-slate-500 mt-12 font-bold uppercase tracking-widest text-sm">Repetición 1 de 10</p>
+            </div>
+            <button onclick="togglePause()" id="btn-pause" class="w-full max-w-xs bg-white/10 text-white font-bold py-5 rounded-3xl border border-white/10 hover:bg-white/20 transition active:scale-95">
+                Pausar Sesión
+            </button>
+        </div>
+
+        <div id="success-modal" class="fixed inset-0 bg-white z-[70] hidden flex-col items-center justify-center p-8 text-center fade-in">
+            <div class="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6 shadow-sm"><i data-lucide="check-circle" class="w-12 h-12"></i></div>
+            <h2 class="text-3xl font-black text-slate-900 mb-2">¡Sincronizado!</h2>
+            <p class="text-slate-500 mb-8 max-w-[250px]">Tu progreso ha sido guardado de forma segura.</p>
+            <div class="bg-indigo-50 rounded-3xl p-8 w-full max-w-xs mb-10 border border-indigo-100">
+                <p class="text-xs font-black text-indigo-400 uppercase tracking-widest mb-1">XP Ganada</p>
+                <p class="text-5xl font-black text-indigo-600">+<span id="success-xp">0</span></p>
+            </div>
+            <button onclick="closeSuccess()" class="w-full max-w-xs bg-indigo-600 text-white font-bold py-5 rounded-2xl shadow-xl hover:bg-indigo-700 active:scale-95 transition">
+                Volver al Inicio
+            </button>
+        </div>
+
+    </div>
+
+    <!-- LÓGICA DE APLICACIÓN HÍBRIDA (NUBE + LOCAL + RESPALDOS) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ESTADO GLOBAL
+        window.userProfile = null;
+        window.currentUsername = null;
+        window.isLoggedIn = false;
+        window.isCloudActive = false;
+        let currentDate = new Date();
+        let workoutTimer = null;
+        
+        let app, auth, db, appId;
+
+        // INICIALIZACIÓN
+        async function initSystem() {
+            try {
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    const firebaseConfig = typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
+                    app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    appId = typeof __app_id !== 'undefined' ? __app_id : 'kegel-vital-pro-hybrid';
+                    
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    window.isCloudActive = true;
+                    onAuthStateChanged(auth, (user) => { if (user) loadProfilesList(); });
+                } else {
+                    throw new Error("No Cloud config");
+                }
+            } catch (err) {
+                window.isCloudActive = false;
+                document.getElementById('login-subtitle').innerText = "Guardado local activado (Seguro).";
+                loadProfilesList();
+            }
+        }
+
+        initSystem();
+
+        async function loadProfilesList() {
+            if (window.isCloudActive) {
+                const profilesRef = collection(db, 'artifacts', appId, 'public', 'data', 'profiles');
+                onSnapshot(profilesRef, (snapshot) => {
+                    const profiles = [];
+                    snapshot.forEach(doc => profiles.push(doc.id));
+                    renderProfilesList(profiles);
+                });
+            } else {
+                const localDb = JSON.parse(localStorage.getItem('kegel_vital_data')) || { users: {} };
+                renderProfilesList(Object.keys(localDb.users));
+            }
+        }
+
+        window.handleLogin = async function(selectedName = null) {
+            const input = document.getElementById('input-username');
+            const name = (selectedName || input.value).trim().toLowerCase();
+            if (!name) return;
+            setLoading(true);
+
+            try {
+                if (window.isCloudActive) {
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'profiles', name);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) window.userProfile = docSnap.data();
+                    else {
+                        window.userProfile = { name: name, level: 1, xp: 0, history: {}, settings: { hold: 5, rest: 5, reps: 10, sets: 3 }, lastBackup: null };
+                        await setDoc(docRef, window.userProfile);
+                    }
+                    onSnapshot(docRef, (snap) => { if (snap.exists()) { window.userProfile = snap.data(); refreshUI(); } });
+                } else {
+                    const localDb = JSON.parse(localStorage.getItem('kegel_vital_data')) || { users: {} };
+                    if (localDb.users[name]) window.userProfile = localDb.users[name];
+                    else {
+                        window.userProfile = { name: name, level: 1, xp: 0, history: {}, settings: { hold: 5, rest: 5, reps: 10, sets: 3 }, lastBackup: null };
+                        localDb.users[name] = window.userProfile;
+                        localStorage.setItem('kegel_vital_data', JSON.stringify(localDb));
+                    }
+                }
+                window.currentUsername = name;
+                window.isLoggedIn = true;
+                document.getElementById('view-login').classList.add('hidden');
+                document.getElementById('app-content').classList.replace('hidden', 'flex');
+                
+                const connStatus = document.getElementById('connection-status');
+                if (window.isCloudActive) connStatus.innerHTML = `<span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> <span class="text-green-600">Nube Conectada</span>`;
+                else connStatus.innerHTML = `<span class="w-2 h-2 bg-orange-400 rounded-full"></span> <span class="text-orange-500">Modo Local</span>`;
+
+            } catch (error) { console.error("Login error:", error); }
+            finally { setLoading(false); refreshUI(); }
+        };
+
+        window.saveData = async function() {
+            if (!window.isLoggedIn || !window.currentUsername) return;
+            if (window.isCloudActive) {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'profiles', window.currentUsername);
+                await setDoc(docRef, window.userProfile);
+            } else {
+                const localDb = JSON.parse(localStorage.getItem('kegel_vital_data')) || { users: {} };
+                localDb.users[window.currentUsername] = window.userProfile;
+                localStorage.setItem('kegel_vital_data', JSON.stringify(localDb));
+            }
+        };
+
+        window.handleLogout = function() {
+            window.isLoggedIn = false;
+            window.currentUsername = null;
+            document.getElementById('app-content').classList.replace('flex', 'hidden');
+            document.getElementById('view-login').classList.remove('hidden');
+            document.getElementById('input-username').value = '';
+            loadProfilesList();
+        };
+
+        // ==========================================
+        // FUNCIONES DE RESPALDO (OPCIÓN 3)
+        // ==========================================
+        window.exportBackup = async function() {
+            if (!window.userProfile) return;
+            
+            // Convertimos los datos a texto
+            const dataStr = JSON.stringify(window.userProfile, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            // Creamos un link de descarga automático
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Respaldo_Kegel_${window.userProfile.name}_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            // ACTUALIZAR FECHA DE RESPALDO
+            window.userProfile.lastBackup = new Date().toISOString();
+            await window.saveData();
+            refreshUI();
+            
+            alert("Respaldo generado. Guárdalo en tu Google Drive o Carpeta Segura.");
+        };
+
+        window.triggerImport = function() {
+            document.getElementById('import-file').click();
+        };
+
+        window.handleImport = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    // Verificación básica
+                    if (importedData.name && importedData.history) {
+                        window.userProfile = importedData;
+                        window.currentUsername = importedData.name;
+                        await window.saveData();
+                        refreshUI();
+                        alert("¡Restauración exitosa! Tus datos han sido cargados.");
+                    } else {
+                        throw new Error("Archivo no válido");
+                    }
+                } catch (err) {
+                    alert("Error: El archivo no es un respaldo válido de Kegel Vital.");
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        // ==========================================
+        // UI & WORKOUT (Sin cambios significativos)
+        // ==========================================
+        function refreshUI() {
+            if (!window.userProfile) return;
+            const p = window.userProfile;
+            document.getElementById('display-level').innerText = `Lvl ${p.level}`;
+            document.getElementById('home-xp-text').innerText = `${p.xp} XP`;
+            const currentXp = p.xp % 100;
+            document.getElementById('home-xp-bar').style.width = `${currentXp}%`;
+            document.getElementById('home-xp-next').innerText = `Faltan ${100 - currentXp} XP para el nivel ${p.level + 1}`;
+
+            // Lógica del recordatorio de respaldo (7 días)
+            const reminderEl = document.getElementById('backup-reminder');
+            let needsBackup = true;
+            if (p.lastBackup) {
+                const lastDate = new Date(p.lastBackup);
+                const diffTime = Math.abs(new Date() - lastDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                if (diffDays <= 7) needsBackup = false;
+            }
+            // Mostrar solo si necesita respaldo y ya tiene experiencia ganada (para no molestar a cuentas nuevas)
+            if (needsBackup && p.xp > 0) {
+                reminderEl.classList.remove('hidden');
+            } else {
+                reminderEl.classList.add('hidden');
+            }
+
+            const today = new Date().toLocaleDateString('en-CA');
+            const done = p.history[today] === true;
+            document.getElementById('home-status').innerText = done ? "¡Entrenamiento completado!" : "Pendiente hoy";
+            document.getElementById('home-status-icon').innerHTML = done ? `<i data-lucide="check" class="text-green-600"></i>` : `<i data-lucide="clock"></i>`;
+            document.getElementById('home-status-icon').className = `w-10 h-10 rounded-full flex items-center justify-center ${done ? 'bg-green-100' : 'bg-slate-100'}`;
+            
+            const totalSec = (p.settings.hold + p.settings.rest) * p.settings.reps * p.settings.sets;
+            document.getElementById('home-time-estimate').innerText = `~${Math.ceil(totalSec/60)} MIN`;
+
+            renderSettings();
+            renderCalendar();
+            lucide.createIcons();
+        }
+
+        function renderSettings() {
+            const container = document.getElementById('settings-list');
+            const s = window.userProfile.settings;
+            const config = [
+                { id: 'hold', label: 'Contracción', min: 2, max: 15, unit: 's' },
+                { id: 'rest', label: 'Relajación', min: 2, max: 15, unit: 's' },
+                { id: 'reps', label: 'Repeticiones', min: 5, max: 30, unit: '' },
+                { id: 'sets', label: 'Series', min: 1, max: 5, unit: '' }
+            ];
+            container.innerHTML = config.map(c => `
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${c.label}</label>
+                        <span class="text-sm font-black text-indigo-600">${s[c.id]}${c.unit}</span>
+                    </div>
+                    <input type="range" min="${c.min}" max="${c.max}" value="${s[c.id]}" 
+                           oninput="window.updateSetting('${c.id}', this.value)" 
+                           class="w-full accent-indigo-600 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer">
+                </div>
+            `).join('');
+        }
+
+        window.updateSetting = (key, val) => { window.userProfile.settings[key] = parseInt(val); refreshUI(); window.saveData(); };
+
+        window.switchTab = (id) => {
+            ['home', 'calendar', 'settings'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`nav-${t}`).classList.replace('text-indigo-600', 'text-slate-400');
+            });
+            document.getElementById(`tab-${id}`).classList.remove('hidden');
+            document.getElementById(`nav-${id}`).classList.replace('text-slate-400', 'text-indigo-600');
+            document.getElementById('header-title').innerText = id === 'home' ? 'Inicio' : (id === 'calendar' ? 'Historial' : 'Ajustes');
+            if(id === 'calendar') renderCalendar();
+        };
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+            const y = currentDate.getFullYear();
+            const m = currentDate.getMonth();
+            const names = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            document.getElementById('calendar-month-year').innerText = `${names[m]} ${y}`;
+            const first = new Date(y, m, 1).getDay();
+            const last = new Date(y, m + 1, 0).getDate();
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            for (let i = 0; i < first; i++) grid.innerHTML += `<div></div>`;
+            for (let d = 1; d <= last; d++) {
+                const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const done = window.userProfile.history[ds] === true;
+                let cls = "w-9 h-9 mx-auto rounded-xl flex items-center justify-center text-sm font-bold transition-all ";
+                if (done) cls += "bg-indigo-600 text-white shadow-lg scale-110";
+                else if (ds === todayStr) cls += "border-2 border-indigo-400 text-indigo-600 bg-indigo-50";
+                else cls += "text-slate-400";
+                grid.innerHTML += `<div class="py-1"><div class="${cls}">${d}</div></div>`;
+            }
+        }
+
+        window.changeMonth = (off) => { currentDate.setMonth(currentDate.getMonth() + off); renderCalendar(); };
+
+        // MOTOR WORKOUT
+        let ws = { active: false, pause: false, phase: 'PREP', rep: 1, set: 1, t: 3 };
+        window.startWorkout = () => { ws = { active: true, pause: false, phase: 'PREP', rep: 1, set: 1, t: 3 }; document.getElementById('workout-modal').classList.replace('hidden', 'flex'); updateWUI(); workoutTimer = setInterval(wLoop, 1000); };
+        function wLoop() { if (ws.pause) return; ws.t--; if (ws.t < 0) wNext(); updateWUI(); }
+        function wNext() {
+            const s = window.userProfile.settings;
+            const circ = document.getElementById('breathing-circle');
+            if (ws.phase === 'PREP') { ws.phase = 'HOLD'; ws.t = s.hold; circ.style.animation = `pulse-contract ${s.hold}s forwards linear`; }
+            else if (ws.phase === 'HOLD') { ws.phase = 'REST'; ws.t = s.rest; circ.style.animation = `pulse-relax ${s.rest}s forwards linear`; }
+            else {
+                ws.rep++; if (ws.rep > s.reps) { ws.rep = 1; ws.set++; if (ws.set > s.sets) { finish(); return; } ws.phase = 'PREP'; ws.t = 5; circ.style.animation = 'none'; }
+                else { ws.phase = 'HOLD'; ws.t = s.hold; circ.style.animation = `pulse-contract ${s.hold}s forwards linear`; }
+            }
+        }
+        function updateWUI() { 
+            document.getElementById('workout-timer').innerText = ws.t; 
+            document.getElementById('workout-progress').innerText = `Serie ${ws.set}/${window.userProfile.settings.sets}`;
+            document.getElementById('workout-instruction').innerText = ws.phase === 'HOLD' ? "CONTRAE" : (ws.phase === 'REST' ? "RELAJA" : "PREPÁRATE");
+            document.getElementById('workout-rep-count').innerText = `Repetición ${ws.rep} de ${window.userProfile.settings.reps}`;
+        }
+        window.abortWorkout = () => { clearInterval(workoutTimer); document.getElementById('workout-modal').classList.replace('flex', 'hidden'); };
+        window.togglePause = () => { ws.pause = !ws.pause; document.getElementById('btn-pause').innerText = ws.pause ? "Reanudar" : "Pausar"; };
+        async function finish() {
+            window.abortWorkout();
+            const gain = window.userProfile.settings.reps * window.userProfile.settings.sets * 2;
+            window.userProfile.xp += gain;
+            window.userProfile.level = Math.floor(window.userProfile.xp / 100) + 1;
+            window.userProfile.history[new Date().toLocaleDateString('en-CA')] = true;
+            document.getElementById('success-xp').innerText = gain;
+            document.getElementById('success-modal').classList.replace('hidden', 'flex');
+            await window.saveData();
+        }
+        window.closeSuccess = () => { document.getElementById('success-modal').classList.replace('flex', 'hidden'); refreshUI(); };
+
+        function renderProfilesList(list) {
+            const div = document.getElementById('profiles-list');
+            const cont = document.getElementById('profiles-container');
+            div.innerHTML = '';
+            if (list.length > 0) {
+                cont.classList.remove('hidden');
+                list.forEach(n => {
+                    const b = document.createElement('button');
+                    b.className = "px-4 py-2 bg-slate-100 text-slate-600 rounded-full text-xs font-bold hover:bg-indigo-50 hover:text-indigo-600 transition capitalize border border-slate-200";
+                    b.innerText = n; b.onclick = () => window.handleLogin(n); div.appendChild(b);
+                });
+            }
+        }
+        function setLoading(l) { const b = document.getElementById('btn-login'); b.innerText = l ? "Cargando..." : "Entrar a mi perfil"; b.disabled = l; }
+        lucide.createIcons();
+    </script>
+</body>
+</html>
